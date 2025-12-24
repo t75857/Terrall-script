@@ -1,0 +1,215 @@
+-- LuvTerrall Script - Small Draggable Menu with Custom Input Boxes
+
+local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
+local UserInputService = game:GetService("UserInputService")
+local LocalPlayer = Players.LocalPlayer
+local PlayerGui = LocalPlayer:WaitForChild("PlayerGui")
+
+-- ====== ScreenGui ======
+local ScreenGui = Instance.new("ScreenGui")
+ScreenGui.Name = "LuvTerrallGUI"
+ScreenGui.Parent = PlayerGui
+
+-- ====== Toggle Button ======
+local ToggleButton = Instance.new("TextButton")
+ToggleButton.Size = UDim2.new(0, 100, 0, 35)
+ToggleButton.Position = UDim2.new(0, 10, 0, 10)
+ToggleButton.BackgroundColor3 = Color3.fromRGB(70, 70, 70)
+ToggleButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+ToggleButton.Text = "Open Menu"
+ToggleButton.Parent = ScreenGui
+ToggleButton.AutoButtonColor = true
+ToggleButton.TextScaled = true
+local toggleCorner = Instance.new("UICorner")
+toggleCorner.CornerRadius = UDim.new(0, 5)
+toggleCorner.Parent = ToggleButton
+
+-- ====== Main Menu Frame ======
+local Frame = Instance.new("Frame")
+Frame.Size = UDim2.new(0, 180, 0, 280)
+Frame.Position = UDim2.new(0, 10, 0, 60)
+Frame.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
+Frame.BorderSizePixel = 0
+Frame.Visible = false
+Frame.Parent = ScreenGui
+
+local UICorner = Instance.new("UICorner")
+UICorner.CornerRadius = UDim.new(0, 10)
+UICorner.Parent = Frame
+
+local UIListLayout = Instance.new("UIListLayout")
+UIListLayout.Parent = Frame
+UIListLayout.SortOrder = Enum.SortOrder.LayoutOrder
+UIListLayout.Padding = UDim.new(0, 8)
+
+-- ====== Toggle Menu ======
+ToggleButton.MouseButton1Click:Connect(function()
+    Frame.Visible = not Frame.Visible
+    ToggleButton.Text = Frame.Visible and "Close Menu" or "Open Menu"
+end)
+
+-- ====== Draggable Function ======
+local dragging, dragInput, dragStart, startPos
+Frame.InputBegan:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+        dragging = true
+        dragStart = input.Position
+        startPos = Frame.Position
+        input.Changed:Connect(function()
+            if input.UserInputState == Enum.UserInputState.End then
+                dragging = false
+            end
+        end)
+    end
+end)
+
+Frame.InputChanged:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch then
+        dragInput = input
+    end
+end)
+
+UserInputService.InputChanged:Connect(function(input)
+    if input == dragInput and dragging then
+        local delta = input.Position - dragStart
+        Frame.Position = UDim2.new(
+            startPos.X.Scale,
+            startPos.X.Offset + delta.X,
+            startPos.Y.Scale,
+            startPos.Y.Offset + delta.Y
+        )
+    end
+end)
+
+-- ====== Utility Functions ======
+local function createButton(text, callback)
+    local btn = Instance.new("TextButton")
+    btn.Size = UDim2.new(1, -16, 0, 30)
+    btn.BackgroundColor3 = Color3.fromRGB(70, 70, 70)
+    btn.TextColor3 = Color3.fromRGB(255, 255, 255)
+    btn.Text = text
+    btn.Parent = Frame
+    btn.AutoButtonColor = true
+    btn.TextScaled = true
+    btn.MouseButton1Click:Connect(callback)
+    local corner = Instance.new("UICorner")
+    corner.CornerRadius = UDim.new(0, 5)
+    corner.Parent = btn
+end
+
+-- ====== Custom Input Box ======
+local function createInputBox(labelText, default, callback)
+    local container = Instance.new("Frame")
+    container.Size = UDim2.new(1, -16, 0, 50)
+    container.BackgroundTransparency = 1
+    container.Parent = Frame
+
+    local label = Instance.new("TextLabel")
+    label.Size = UDim2.new(1, 0, 0, 18)
+    label.Text = labelText
+    label.TextColor3 = Color3.fromRGB(255,255,255)
+    label.BackgroundTransparency = 1
+    label.TextScaled = true
+    label.Parent = container
+
+    local textbox = Instance.new("TextBox")
+    textbox.Size = UDim2.new(1, 0, 0, 24)
+    textbox.Position = UDim2.new(0, 0, 0, 22)
+    textbox.BackgroundColor3 = Color3.fromRGB(100,100,100)
+    textbox.TextColor3 = Color3.fromRGB(255,255,255)
+    textbox.Text = tostring(default)
+    textbox.ClearTextOnFocus = false
+    textbox.TextScaled = true
+    textbox.Parent = container
+    local boxCorner = Instance.new("UICorner")
+    boxCorner.CornerRadius = UDim.new(0,5)
+    boxCorner.Parent = textbox
+
+    textbox.FocusLost:Connect(function(enterPressed)
+        local val = tonumber(textbox.Text)
+        if val then
+            callback(val)
+        else
+            textbox.Text = tostring(default)
+        end
+    end)
+end
+
+-- ====== ESP ======
+local espEnabled = false
+createButton("Toggle ESP", function()
+    espEnabled = not espEnabled
+end)
+
+RunService.RenderStepped:Connect(function()
+    if espEnabled then
+        for _, player in pairs(Players:GetPlayers()) do
+            if player ~= LocalPlayer and player.Character and player.Character:FindFirstChild("HumanoidRootPart") then
+                if not player.Character:FindFirstChild("ESPBox") then
+                    local box = Instance.new("BoxHandleAdornment")
+                    box.Name = "ESPBox"
+                    box.Adornee = player.Character.HumanoidRootPart
+                    box.Size = Vector3.new(2,5,1)
+                    box.Color3 = Color3.fromRGB(0,255,0)
+                    box.Transparency = 0.5
+                    box.AlwaysOnTop = true
+                    box.Parent = player.Character
+                end
+            end
+        end
+    else
+        for _, player in pairs(Players:GetPlayers()) do
+            if player.Character and player.Character:FindFirstChild("ESPBox") then
+                player.Character.ESPBox:Destroy()
+            end
+        end
+    end
+end)
+
+-- ====== WalkSpeed & JumpPower Inputs ======
+local walkSpeed = 16
+local jumpPower = 50
+
+createInputBox("WalkSpeed", walkSpeed, function(val)
+    walkSpeed = val
+    if LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("Humanoid") then
+        LocalPlayer.Character.Humanoid.WalkSpeed = walkSpeed
+    end
+end)
+
+createInputBox("JumpPower", jumpPower, function(val)
+    jumpPower = val
+    if LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("Humanoid") then
+        LocalPlayer.Character.Humanoid.JumpPower = jumpPower
+    end
+end)
+
+LocalPlayer.CharacterAdded:Connect(function(char)
+    wait(1)
+    if char:FindFirstChild("Humanoid") then
+        char.Humanoid.WalkSpeed = walkSpeed
+        char.Humanoid.JumpPower = jumpPower
+    end
+end)
+
+-- ====== Anti-AFK ======
+createButton("Enable Anti-AFK", function()
+    local vu = game:GetService("VirtualUser")
+    LocalPlayer.Idled:Connect(function()
+        vu:Button2Down(Vector2.new(0,0), workspace.CurrentCamera.CFrame)
+        wait(1)
+        vu:Button2Up(Vector2.new(0,0), workspace.CurrentCamera.CFrame)
+    end)
+end)
+
+-- ====== Fly Mode using FlyGuiV3 ======
+local flyEnabled = false
+createButton("Toggle Fly", function()
+    flyEnabled = not flyEnabled
+    if flyEnabled then
+        loadstring(game:HttpGet("https://raw.githubusercontent.com/XNEOFF/FlyGuiV3/main/FlyGuiV3.txt"))()
+    end
+end)
+
+print("LuvTerrall Menu with Custom Input Boxes Loaded!")
